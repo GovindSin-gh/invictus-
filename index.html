@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIH26262 - AICTE Case Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bg: '#f2f5f7',
+                        surf: '#ffffff',
+                        ink: '#12263a',
+                        mut: '#56687a',
+                        line: '#d5dde4',
+                        teal: '#0e7c7b',
+                        'teal-s': '#dcf1f0',
+                        amb: '#9a6700',
+                        'amb-s': '#fdf0cf',
+                        red: '#b4332b',
+                        'red-s': '#fbe2df',
+                        grn: '#2f7d3a',
+                        'grn-s': '#e0f2e2',
+                    },
+                    fontFamily: {
+                        sans: ['IBM Plex Sans', 'sans-serif'],
+                        head: ['Bricolage Grotesque', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- FIX: Pinned versions and added react-is -->
+    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+    <script src="https://unpkg.com/react-is@18.2.0/umd/react-is.development.js"></script>
+    <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+    
+    <style>
+        body { font-family: 'IBM Plex Sans', sans-serif; background-color: #f2f5f7; color: #12263a; margin: 0; }
+        h1, h2, h3, h4, h5 { font-family: 'Bricolage Grotesque', sans-serif; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } = window.Recharts;
+
+        // --- Icons (Inline SVG Components) ---
+        const IconDashboard = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>;
+        const IconFolder = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>;
+        const IconCalendar = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+        const IconCheck = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+        const IconFileText = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
+        const IconLog = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>;
+        const IconClock = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+        const IconAlert = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
+
+        // --- Mock Data ---
+        const initialApplications = [
+            { id: 'APP-101', inst: 'Global Tech Institute', type: 'New Institute', route: 'Scrutiny + EVC', stage: 'Scrutiny', age: 12, region: 'Northern', deadline: 15 },
+            { id: 'APP-102', inst: 'Pioneer Engg College', type: 'Extension of Approval', route: 'Only Scrutiny', stage: 'Submitted', age: 2, region: 'Western', deadline: 15 },
+            { id: 'APP-103', inst: 'Future Science Acad', type: 'New Course', route: 'Scrutiny + EVC', stage: 'EVC queue', age: 22, region: 'Southern', deadline: 7 },
+            { id: 'APP-104', inst: 'Apex Pharmacy Inst', type: 'Increase Intake', route: 'EVC + SAC/SHC', stage: 'EVC visit', age: 45, region: 'Eastern', deadline: 20 },
+            { id: 'APP-105', inst: 'Quantum Management', type: 'New Institute', route: 'Scrutiny + EVC', stage: 'Decision', age: 58, region: 'Northern', deadline: 5 },
+            { id: 'APP-106', inst: 'Horizon Architecture', type: 'Extension of Approval', route: 'Only Scrutiny', stage: 'Scrutiny', age: 18, region: 'Western', deadline: 15 },
+        ];
+
+        const initialEvcQueue = [
+            { id: 'EVC-501', app: 'APP-103', inst: 'Future Science Acad', status: 'Queued', date: null, committee: null },
+            { id: 'EVC-502', app: 'APP-104', inst: 'Apex Pharmacy Inst', status: 'Scheduled', date: 'Day 50', committee: 'Comm-A (Prof. Sharma, Dr. Rao)' },
+        ];
+
+        const initialUndertakings = [
+            { id: 'UND-201', app: 'APP-105', inst: 'Quantum Management', cond: 'Fire Safety NOC Renewal', due: 30, status: 'Pending', file: null },
+            { id: 'UND-202', app: 'APP-101', inst: 'Global Tech Institute', cond: 'Building Plan Approval', due: 45, status: 'Verified', file: 'building_plan.pdf' },
+        ];
+
+        const initialDocs = [
+            { id: 'DOC-301', inst: 'Global Tech Institute', type: 'Lease Deed', validTill: 90, status: 'Valid' },
+            { id: 'DOC-302', inst: 'Pioneer Engg College', type: 'Fire NOC', validTill: 15, status: 'Expiring Soon' },
+            { id: 'DOC-303', inst: 'Apex Pharmacy Inst', type: 'Land Certificate', validTill: -5, status: 'Overdue' },
+        ];
+
+        const initialAudit = [
+            { id: 1, time: 'Day -10', actor: 'Institution (Global Tech)', action: 'SUBMIT_APP', entity: 'APP-101', hash: 'e2a5f...9b' },
+            { id: 2, time: 'Day -8', actor: 'System', action: 'ROUTE_ASSIGNED', entity: 'APP-101 (Scrutiny + EVC)', hash: 'f8c1d...3a' },
+            { id: 3, time: 'Day -2', actor: 'Scrutiny Officer', action: 'RETURN_DEFICIENCY', entity: 'APP-101 (Missing Fire NOC)', hash: 'a1b2c...4d' },
+            { id: 4, time: 'Day 0', actor: 'Institution (Global Tech)', action: 'REPLY_DEFICIENCY', entity: 'APP-101', hash: 'd4e5f...6g' },
+        ];
+
+        // --- Main App Component ---
+        const App = () => {
+            const [role, setRole] = useState('Regional Officer');
+            const [view, setView] = useState('Dashboard');
+            const [currentDay, setCurrentDay] = useState(0);
+            
+            const [apps, setApps] = useState(initialApplications);
+            const [evc, setEvc] = useState(initialEvcQueue);
+            const [undertakings, setUndertakings] = useState(initialUndertakings);
+            const [docs, setDocs] = useState(initialDocs);
+            const [audit, setAudit] = useState(initialAudit);
+            const [alerts, setAlerts] = useState([]);
+
+            const [tampered, setTampered] = useState(false);
+            const [chainIntact, setChainIntact] = useState(null);
+
+            // Access Control Logic
+            const canView = (menuView) => {
+                const map = {
+                    'Dashboard': ['Regional Officer', 'Bureau Head', 'Admin', 'Institution', 'Scrutiny Officer'],
+                    'Applications': ['Regional Officer', 'Bureau Head', 'Admin', 'Institution', 'Scrutiny Officer'],
+                    'EVC Queue': ['Regional Officer', 'Bureau Head', 'Admin'],
+                    'Undertakings': ['Regional Officer', 'Bureau Head', 'Admin', 'Institution'],
+                    'Documents': ['Regional Officer', 'Bureau Head', 'Admin', 'Institution'],
+                    'Audit Log': ['Admin'],
+                    'Simulator': ['Admin', 'Regional Officer', 'Scrutiny Officer', 'Bureau Head', 'Institution']
+                };
+                return map[menuView].includes(role);
+            };
+
+            // Time Travel Logic
+            const advanceTime = (days) => {
+                const newDay = currentDay + days;
+                setCurrentDay(newDay);
+
+                const newAlerts = [];
+                
+                setApps(apps.map(a => {
+                    const newAge = a.age + days;
+                    if (newAge > a.deadline && a.age <= a.deadline) {
+                        newAlerts.push({ type: 'SLA Breach', msg: `Application ${a.id} breached SLA for stage ${a.stage}`, role: 'Bureau Head' });
+                        newAlerts.push({ type: 'Warning', msg: `Application ${a.id} is overdue in ${a.stage}`, role: 'Scrutiny Officer' });
+                    }
+                    return { ...a, age: newAge };
+                }));
+
+                setDocs(docs.map(d => {
+                    const newValidTill = d.validTill - days;
+                    let newStatus = d.status;
+                    if (newValidTill < 0 && d.validTill >= 0) {
+                        newStatus = 'Overdue';
+                        newAlerts.push({ type: 'Escalation', msg: `${d.type} for ${d.inst} expired!`, role: 'Regional Officer' });
+                        newAlerts.push({ type: 'Action Required', msg: `Your ${d.type} has expired!`, role: 'Institution' });
+                    } else if (newValidTill > 0 && newValidTill <= 30 && d.validTill > 30) {
+                        newStatus = 'Expiring Soon';
+                        newAlerts.push({ type: 'Reminder', msg: `${d.type} for ${d.inst} expires in 30 days`, role: 'Institution' });
+                    }
+                    return { ...d, validTill: newValidTill, status: newStatus };
+                }));
+
+                setAlerts(prev => [...newAlerts, ...prev].slice(0, 10));
+            };
+
+            const logAction = (actor, action, entity) => {
+                setAudit(prev => [{
+                    id: prev.length + 1,
+                    time: `Day ${currentDay}`,
+                    actor,
+                    action,
+                    entity,
+                    hash: Math.random().toString(36).substring(2, 10) + '...'
+                }, ...prev]);
+            };
+
+            const advanceStage = (id) => {
+                setApps(apps.map(a => {
+                    if(a.id === id) {
+                        const routes = {
+                            'Scrutiny + EVC': ['Submitted', 'Scrutiny', 'EVC queue', 'EVC visit', 'EVC report', 'Decision'],
+                            'Only Scrutiny': ['Submitted', 'Scrutiny', 'Decision']
+                        };
+                        const routeSteps = routes[a.route] || ['Submitted', 'Decision'];
+                        const idx = routeSteps.indexOf(a.stage);
+                        if(idx > -1 && idx < routeSteps.length - 1) {
+                            const nextStage = routeSteps[idx + 1];
+                            logAction(role, 'ADVANCE_STAGE', `${id} -> ${nextStage}`);
+                            
+                            if (nextStage === 'EVC queue') {
+                                setEvc(prev => [...prev, { id: `EVC-${Math.floor(Math.random()*1000)}`, app: id, inst: a.inst, status: 'Queued', date: null, committee: null }]);
+                            }
+                            
+                            return { ...a, stage: nextStage, age: 0 };
+                        }
+                    }
+                    return a;
+                }));
+            };
+
+            const NavItem = ({ name, icon: Icon }) => (
+                canView(name) ? (
+                    <button 
+                        onClick={() => setView(name)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${view === name ? 'bg-teal text-white' : 'text-mut hover:bg-line hover:text-ink'}`}
+                    >
+                        <Icon /> {name}
+                    </button>
+                ) : null
+            );
+
+            const Pill = ({ type, text }) => {
+                const styles = {
+                    t: 'bg-teal-s text-teal',
+                    a: 'bg-amb-s text-amb',
+                    r: 'bg-red-s text-red',
+                    g: 'bg-grn-s text-grn',
+                    d: 'bg-line text-mut'
+                };
+                return <span className={`px-2 py-1 rounded text-xs font-bold ${styles[type] || styles.d}`}>{text}</span>;
+            };
+
+            const DashboardView = () => {
+                const pendingCount = apps.filter(a => a.stage !== 'Decision').length;
+                const overdueCount = apps.filter(a => a.age > a.deadline).length;
+                
+                const stageData = [
+                    { name: 'Scrutiny', count: apps.filter(a => a.stage === 'Scrutiny').length },
+                    { name: 'EVC Queue', count: apps.filter(a => a.stage === 'EVC queue').length },
+                    { name: 'EVC Visit', count: apps.filter(a => a.stage === 'EVC visit').length },
+                    { name: 'Decision', count: apps.filter(a => a.stage === 'Decision').length },
+                ];
+
+                const regionData = [
+                    { name: 'Northern', value: apps.filter(a => a.region === 'Northern').length, color: '#0e7c7b' },
+                    { name: 'Western', value: apps.filter(a => a.region === 'Western').length, color: '#9a6700' },
+                    { name: 'Southern', value: apps.filter(a => a.region === 'Southern').length, color: '#b4332b' },
+                    { name: 'Eastern', value: apps.filter(a => a.region === 'Eastern').length, color: '#2f7d3a' },
+                ];
+
+                return (
+                    <div className="space-y-6">
+                        <h2 className="text-2xl font-bold">Region Dashboard</h2>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-surf p-6 rounded-xl border border-line flex flex-col justify-center shadow-sm">
+                                <span className="text-mut text-sm font-semibold uppercase">Total Pending</span>
+                                <span className="text-4xl font-head font-bold mt-2">{pendingCount}</span>
+                            </div>
+                            <div className="bg-surf p-6 rounded-xl border border-line flex flex-col justify-center shadow-sm">
+                                <span className="text-mut text-sm font-semibold uppercase">Overdue Approvals</span>
+                                <span className="text-4xl font-head font-bold mt-2 text-red">{overdueCount}</span>
+                            </div>
+                            <div className="bg-surf p-6 rounded-xl border border-line flex flex-col justify-center shadow-sm">
+                                <span className="text-mut text-sm font-semibold uppercase">Expiring Documents</span>
+                                <span className="text-4xl font-head font-bold mt-2 text-amb">{docs.filter(d=>d.validTill < 30).length}</span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-surf p-6 rounded-xl border border-line shadow-sm">
+                                <h3 className="font-bold text-lg mb-4">Pendency by Stage</h3>
+                                <div className="h-64">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={stageData}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d5dde4" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#56687a', fontSize: 12}} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#56687a', fontSize: 12}} />
+                                            <Tooltip cursor={{fill: '#f2f5f7'}} contentStyle={{borderRadius: '8px', border: '1px solid #d5dde4'}} />
+                                            <Bar dataKey="count" fill="#0e7c7b" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                            <div className="bg-surf p-6 rounded-xl border border-line shadow-sm">
+                                <h3 className="font-bold text-lg mb-4">Workload by Region</h3>
+                                <div className="h-64">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie data={regionData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value">
+                                                {regionData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                            </Pie>
+                                            <Tooltip contentStyle={{borderRadius: '8px', border: '1px solid #d5dde4'}} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="flex justify-center gap-4 mt-2">
+                                    {regionData.map(r => (
+                                        <div key={r.name} className="flex items-center gap-1 text-sm"><div className="w-3 h-3 rounded-full" style={{backgroundColor: r.color}}></div>{r.name}</div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const ApplicationsView = () => (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-bold">Applications</h2>
+                        {role === 'Institution' && <button className="bg-teal text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-teal/90">+ New Application</button>}
+                    </div>
+                    <div className="bg-surf border border-line rounded-xl overflow-hidden shadow-sm">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-bg text-mut border-b border-line">
+                                    <tr>
+                                        <th className="p-4 font-semibold">ID & Inst</th>
+                                        <th className="p-4 font-semibold">Route</th>
+                                        <th className="p-4 font-semibold">Stage</th>
+                                        <th className="p-4 font-semibold">Age (Days)</th>
+                                        <th className="p-4 font-semibold">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {apps.map(a => {
+                                        const isOverdue = a.age > a.deadline;
+                                        return (
+                                            <tr key={a.id} className="border-b border-line last:border-0 hover:bg-bg/50 transition-colors">
+                                                <td className="p-4">
+                                                    <div className="font-bold text-ink">{a.id}</div>
+                                                    <div className="text-mut text-xs">{a.inst}</div>
+                                                </td>
+                                                <td className="p-4"><Pill type="d" text={a.route} /></td>
+                                                <td className="p-4"><Pill type="t" text={a.stage} /></td>
+                                                <td className="p-4">
+                                                    <span className={`font-mono font-bold ${isOverdue ? 'text-red' : 'text-ink'}`}>{a.age}</span>
+                                                    <span className="text-mut text-xs"> / {a.deadline}</span>
+                                                    {isOverdue && <span className="ml-2 inline-block"><Pill type="r" text="Overdue" /></span>}
+                                                </td>
+                                                <td className="p-4">
+                                                    {role === 'Scrutiny Officer' && a.stage === 'Scrutiny' && (
+                                                        <button onClick={() => advanceStage(a.id)} className="text-xs bg-grn-s text-grn px-3 py-1 rounded font-bold hover:bg-grn hover:text-white transition-colors">Advance</button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const EVCView = () => (
+                <div className="space-y-6">
+                    <h2 className="text-2xl font-bold">EVC Queue & Scheduling</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {evc.map(e => (
+                            <div key={e.id} className="bg-surf p-5 rounded-xl border border-line shadow-sm">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <div className="font-bold text-lg">{e.inst}</div>
+                                        <div className="text-mut text-sm">App: {e.app}</div>
+                                    </div>
+                                    <Pill type={e.status === 'Queued' ? 'a' : 'g'} text={e.status} />
+                                </div>
+                                <div className="text-sm space-y-1 mb-4">
+                                    <div><span className="text-mut">Date:</span> {e.date || 'Not scheduled'}</div>
+                                    <div><span className="text-mut">Committee:</span> {e.committee || 'Unassigned'}</div>
+                                </div>
+                                {role === 'Regional Officer' && e.status === 'Queued' && (
+                                    <button onClick={() => {
+                                        setEvc(evc.map(item => item.id === e.id ? { ...item, status: 'Scheduled', date: `Day ${currentDay + 5}`, committee: 'Comm-B (Dr. Singh, Prof. Ali)' } : item));
+                                        logAction(role, 'SCHEDULE_EVC', e.app);
+                                    }} className="w-full py-2 bg-teal-s text-teal rounded-lg font-bold text-sm hover:bg-teal hover:text-white transition-colors">Schedule Visit</button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+
+            const UndertakingsView = () => (
+                <div className="space-y-6">
+                    <h2 className="text-2xl font-bold">Compliance & Undertakings</h2>
+                    <div className="bg-surf border border-line rounded-xl overflow-hidden shadow-sm">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-bg text-mut border-b border-line">
+                                <tr>
+                                    <th className="p-4 font-semibold">Condition</th>
+                                    <th className="p-4 font-semibold">Institution</th>
+                                    <th className="p-4 font-semibold">Due Day</th>
+                                    <th className="p-4 font-semibold">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {undertakings.map(u => (
+                                    <tr key={u.id} className="border-b border-line last:border-0 hover:bg-bg/50">
+                                        <td className="p-4 font-bold">{u.cond}</td>
+                                        <td className="p-4 text-mut">{u.inst}</td>
+                                        <td className="p-4 font-mono">{u.due}</td>
+                                        <td className="p-4"><Pill type={u.status === 'Verified' ? 'g' : 'a'} text={u.status} /></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+
+            const DocsView = () => (
+                <div className="space-y-6">
+                    <h2 className="text-2xl font-bold">Document Validity</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {docs.map(d => {
+                            let type = 'g';
+                            if (d.status === 'Expiring Soon') type = 'a';
+                            if (d.status === 'Overdue') type = 'r';
+                            return (
+                                <div key={d.id} className={`bg-surf p-5 rounded-xl border-l-4 shadow-sm ${d.status === 'Overdue' ? 'border-l-red' : d.status === 'Expiring Soon' ? 'border-l-amb' : 'border-l-grn border border-y-line border-r-line'}`}>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <span className="font-bold">{d.type}</span>
+                                        <Pill type={type} text={d.status} />
+                                    </div>
+                                    <div className="text-mut text-sm mb-3">{d.inst}</div>
+                                    <div className="text-sm"><span className="text-mut">Valid till Day:</span> <span className="font-mono font-bold">{d.validTill > 0 ? d.validTill : 'Expired'}</span></div>
+                                    {role === 'Institution' && d.status !== 'Valid' && (
+                                        <button className="mt-3 w-full py-1.5 bg-line text-ink rounded font-semibold text-xs hover:bg-ink hover:text-white transition-colors">Upload Renewal</button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+
+            const AuditView = () => (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-bold">Audit Trail</h2>
+                        <div className="flex gap-2">
+                            <button onClick={() => {
+                                if (audit.length > 0) {
+                                    const newAudit = [...audit];
+                                    newAudit[newAudit.length - 1].actor = 'Intruder';
+                                    setAudit(newAudit);
+                                    setTampered(true);
+                                    setChainIntact(null);
+                                }
+                            }} className="bg-bg text-mut border border-line px-3 py-1.5 rounded-lg text-sm hover:border-red hover:text-red transition-colors">Simulate Tampering</button>
+                            <button onClick={() => setChainIntact(!tampered)} className="bg-teal text-white px-4 py-1.5 rounded-lg font-bold text-sm hover:bg-teal/90 transition-colors">Verify Hash Chain</button>
+                        </div>
+                    </div>
+
+                    {chainIntact !== null && (
+                        <div className={`p-4 rounded-lg border-l-4 text-sm font-semibold mb-4 flex items-center gap-2 ${chainIntact ? 'bg-grn-s border-grn text-grn' : 'bg-red-s border-red text-red'}`}>
+                            {chainIntact ? <IconCheck /> : <IconAlert />}
+                            {chainIntact ? "Chain intact. All cryptographic hashes match." : "CHAIN BROKEN! Tampering detected in block #1."}
+                        </div>
+                    )}
+
+                    <div className="bg-surf border border-line rounded-xl overflow-hidden shadow-sm">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-bg text-mut border-b border-line">
+                                <tr>
+                                    <th className="p-4 font-semibold">Block</th>
+                                    <th className="p-4 font-semibold">Time</th>
+                                    <th className="p-4 font-semibold">Actor</th>
+                                    <th className="p-4 font-semibold">Action</th>
+                                    <th className="p-4 font-semibold">Entity</th>
+                                    <th className="p-4 font-semibold">Hash</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {audit.map((a, i) => (
+                                    <tr key={i} className="border-b border-line last:border-0 hover:bg-bg/50">
+                                        <td className="p-4 font-mono text-mut">#{a.id}</td>
+                                        <td className="p-4 whitespace-nowrap">{a.time}</td>
+                                        <td className="p-4 font-semibold">{a.actor}</td>
+                                        <td className="p-4"><Pill type="d" text={a.action} /></td>
+                                        <td className="p-4">{a.entity}</td>
+                                        <td className="p-4 font-mono text-xs text-mut">{a.hash}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+
+            // Toast Notifications
+            const ToastContainer = () => {
+                const visibleAlerts = alerts.filter(a => a.role === role || role === 'Admin').slice(0, 3);
+                if (visibleAlerts.length === 0) return null;
+                return (
+                    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-80">
+                        {visibleAlerts.map((a, i) => (
+                            <div key={i} className={`p-4 rounded-lg shadow-lg border-l-4 bg-surf text-sm animate-fade-in-up ${a.type.includes('Escalation') || a.type.includes('Breach') ? 'border-red' : 'border-amb'}`}>
+                                <div className="font-bold flex justify-between">
+                                    <span>{a.type}</span>
+                                    <span className="text-xs text-mut opacity-70">To: {a.role}</span>
+                                </div>
+                                <div className="text-mut mt-1 leading-tight">{a.msg}</div>
+                            </div>
+                        ))}
+                    </div>
+                );
+            };
+
+            const renderView = () => {
+                switch (view) {
+                    case 'Dashboard': return <DashboardView />;
+                    case 'Applications': return <ApplicationsView />;
+                    case 'EVC Queue': return <EVCView />;
+                    case 'Undertakings': return <UndertakingsView />;
+                    case 'Documents': return <DocsView />;
+                    case 'Audit Log': return <AuditView />;
+                    default: return <DashboardView />;
+                }
+            };
+
+            return (
+                <div className="flex h-screen overflow-hidden">
+                    {/* Sidebar */}
+                    <div className="w-64 bg-surf border-r border-line flex flex-col z-20 shadow-sm shrink-0">
+                        <div className="p-6 border-b border-line">
+                            <h1 className="text-xl font-head font-bold text-teal leading-tight">AICTE<br/>Tracker</h1>
+                            <div className="mt-4">
+                                <label className="text-xs font-semibold text-mut uppercase tracking-wider mb-1 block">Acting As:</label>
+                                <select 
+                                    className="w-full bg-bg border border-line rounded p-2 text-sm font-semibold outline-none focus:border-teal cursor-pointer"
+                                    value={role} 
+                                    onChange={(e) => {
+                                        setRole(e.target.value);
+                                        setView('Dashboard');
+                                    }}
+                                >
+                                    <option value="Admin">Admin</option>
+                                    <option value="Bureau Head">Bureau Head</option>
+                                    <option value="Regional Officer">Regional Officer</option>
+                                    <option value="Scrutiny Officer">Scrutiny Officer</option>
+                                    <option value="Institution">Institution (Global Tech)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="p-4 flex-1 space-y-1 overflow-y-auto hide-scroll">
+                            <NavItem name="Dashboard" icon={IconDashboard} />
+                            <NavItem name="Applications" icon={IconFolder} />
+                            <NavItem name="EVC Queue" icon={IconCalendar} />
+                            <NavItem name="Undertakings" icon={IconCheck} />
+                            <NavItem name="Documents" icon={IconFileText} />
+                            <NavItem name="Audit Log" icon={IconLog} />
+                        </div>
+                        
+                        {/* Time Travel Simulator */}
+                        <div className="p-4 border-t border-line bg-teal-s">
+                            <div className="flex items-center gap-2 text-teal font-bold text-sm mb-2"><IconClock /> Time Simulator</div>
+                            <div className="text-xs text-mut mb-3">Prove SLA & Escalation triggers by moving time forward.</div>
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="font-mono font-bold bg-surf px-2 py-1 rounded text-teal">Day {currentDay}</span>
+                                <button onClick={() => setCurrentDay(0)} className="text-xs underline text-mut hover:text-ink">Reset</button>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => advanceTime(7)} className="flex-1 bg-teal text-white py-1.5 rounded font-bold text-xs hover:bg-teal/90">+7 Days</button>
+                                <button onClick={() => advanceTime(30)} className="flex-1 bg-teal text-white py-1.5 rounded font-bold text-xs hover:bg-teal/90">+30 Days</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Main Content */}
+                    <div className="flex-1 flex flex-col bg-bg overflow-hidden relative">
+                        <header className="h-16 bg-surf border-b border-line flex items-center justify-between px-8 shrink-0">
+                            <div className="font-bold text-lg">{view}</div>
+                            <div className="flex items-center gap-4 text-sm font-semibold">
+                                <span className="text-mut flex items-center gap-1"><IconClock /> Global Time: Day {currentDay}</span>
+                                <span className="bg-amb-s text-amb px-3 py-1 rounded-full flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-amb animate-pulse"></div> Live Demo Mode
+                                </span>
+                            </div>
+                        </header>
+                        <main className="flex-1 overflow-y-auto p-8 hide-scroll">
+                            <div className="max-w-6xl mx-auto">
+                                {renderView()}
+                            </div>
+                        </main>
+                        <ToastContainer />
+                    </div>
+                    
+                    <style dangerouslySetInnerHTML={{__html: `
+                        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+                    `}} />
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
